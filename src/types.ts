@@ -97,13 +97,45 @@ export interface DailyWorkoutLog {
   }[];
 }
 
+export type GenderType = 'male' | 'female' | 'other';
+
+export interface OswestryEvaluationResult {
+  totalScore: number; // 0 to 50
+  percentage: number; // 0 to 100%
+  disabilityLevel: 'minimal' | 'moderate' | 'severe' | 'crippled' | 'bed_bound';
+  disabilityLevelFa: string;
+  descriptionFa: string;
+  completedAt: string;
+  sectionScores: Record<number, number>; // 1 to 10 -> score 0 to 5
+}
+
 export interface PatientProfile {
   name: string;
   age: number | string;
+  gender?: GenderType;
+  genderFa?: string;
   medicalHistory: string;
   painLocation?: string;
   notes?: string;
   startDate?: string;
+  vasPainScore?: number; // 1 to 10 (Visual Analog Scale)
+  oswestryScore?: OswestryEvaluationResult;
+}
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  password?: string;
+  fullName: string;
+  age?: number | string;
+  gender?: GenderType;
+  genderFa?: string;
+  vasPainScore?: number;
+  oswestryScore?: OswestryEvaluationResult;
+  medicalHistory?: string;
+  painLocation?: string;
+  isOnboarded: boolean;
+  createdAt: string;
 }
 
 export interface ExerciseHistoryRecord {

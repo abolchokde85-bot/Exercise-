@@ -154,6 +154,18 @@ export const INITIAL_PROTOCOL_STATE: AppProtocolState = {
   patientProfile: {
     name: 'آنا کلر',
     age: 38,
+    gender: 'female',
+    genderFa: 'زن',
+    vasPainScore: 4,
+    oswestryScore: {
+      totalScore: 14,
+      percentage: 28,
+      disabilityLevel: 'moderate',
+      disabilityLevelFa: 'ناتوانی متوسط (Moderate Disability)',
+      descriptionFa: 'بیمار در نشستن طولانی و بلند کردن بار با درد مواجه است. برنامه تمرینی ثبات‌دهنده ستون فقرات برای کنترل علائم بسیار موثر است.',
+      completedAt: '۱۴۰۳/۰۷/۰۱',
+      sectionScores: { 1: 2, 2: 1, 3: 2, 4: 1, 5: 2, 6: 1, 7: 1, 8: 1, 9: 2, 10: 1 }
+    },
     medicalHistory: 'سابقه بیرون‌زدگی خفیف دیسک مهره‌های L4-L5، احساس خشکی و گرفتگی در عضلات کمر هنگام نشستن طولانی‌مدت در محیط کار.',
     painLocation: 'ناحیه لومبار (پایین کمر)',
     notes: 'توصیه فیزیوتراپیست: تقویت عضلات عمقی شکم و ثبات‌دهنده‌های ستون فقرات بدون خم شدن شدید مهره‌ها.',
@@ -259,11 +271,12 @@ export const INITIAL_PROTOCOL_STATE: AppProtocolState = {
   ]
 };
 
-const PROTOCOL_STORAGE_KEY = 'taskin_kamar_protocol_12w_v1';
+const PROTOCOL_STORAGE_KEY = 'taskin_kamar_protocol_12w_v2';
 
-export function loadProtocolState(): AppProtocolState {
+export function loadProtocolState(userId?: string): AppProtocolState {
   try {
-    const raw = localStorage.getItem(PROTOCOL_STORAGE_KEY);
+    const key = userId ? `${PROTOCOL_STORAGE_KEY}_user_${userId}` : PROTOCOL_STORAGE_KEY;
+    const raw = localStorage.getItem(key);
     if (!raw) return INITIAL_PROTOCOL_STATE;
     const parsed = JSON.parse(raw);
     // ensure all 7 exercises exist
@@ -282,9 +295,10 @@ export function loadProtocolState(): AppProtocolState {
   }
 }
 
-export function saveProtocolState(state: AppProtocolState) {
+export function saveProtocolState(state: AppProtocolState, userId?: string) {
   try {
-    localStorage.setItem(PROTOCOL_STORAGE_KEY, JSON.stringify(state));
+    const key = userId ? `${PROTOCOL_STORAGE_KEY}_user_${userId}` : PROTOCOL_STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify(state));
   } catch {
     // ignore
   }

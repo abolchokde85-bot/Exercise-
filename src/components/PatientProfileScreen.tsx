@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { PatientProfile, ExerciseHistoryRecord, PainAggravation } from '../types';
+import { PatientProfile, ExerciseHistoryRecord, PainAggravation, GenderType } from '../types';
+import { VAS_LEVELS } from '../data/oswestryData';
 import {
   User,
   Calendar,
@@ -17,7 +18,11 @@ import {
   ArrowRight,
   TrendingUp,
   Stethoscope,
-  Printer
+  Printer,
+  Flame,
+  FileSpreadsheet,
+  RotateCcw,
+  Users
 } from 'lucide-react';
 
 interface Props {
@@ -25,17 +30,22 @@ interface Props {
   exerciseHistory: ExerciseHistoryRecord[];
   onUpdateProfile: (updated: PatientProfile) => void;
   onBackToHome: () => void;
+  onOpenAssessment?: () => void;
+  onOpenAccountSwitcher?: () => void;
 }
 
 export const PatientProfileScreen: React.FC<Props> = ({
   profile,
   exerciseHistory,
   onUpdateProfile,
-  onBackToHome
+  onBackToHome,
+  onOpenAssessment,
+  onOpenAccountSwitcher
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(profile.name);
   const [editAge, setEditAge] = useState(profile.age);
+  const [editGender, setEditGender] = useState<GenderType>(profile.gender || 'male');
   const [editMedicalHistory, setEditMedicalHistory] = useState(profile.medicalHistory);
   const [editPainLocation, setEditPainLocation] = useState(profile.painLocation || 'پایین کمر (لومبار)');
   const [editNotes, setEditNotes] = useState(profile.notes || '');
@@ -46,9 +56,13 @@ export const PatientProfileScreen: React.FC<Props> = ({
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    const genderFa = editGender === 'female' ? 'زن' : editGender === 'male' ? 'مرد' : 'سایر';
     onUpdateProfile({
+      ...profile,
       name: editName.trim() || 'بیمار',
       age: editAge,
+      gender: editGender,
+      genderFa,
       medicalHistory: editMedicalHistory.trim(),
       painLocation: editPainLocation.trim(),
       notes: editNotes.trim(),
@@ -79,6 +93,8 @@ export const PatientProfileScreen: React.FC<Props> = ({
   const avgDifficulty = totalCount > 0
     ? (exerciseHistory.reduce((acc, cur) => acc + cur.difficultyScore, 0) / totalCount).toFixed(1)
     : '—';
+
+  const vasInfo = profile.vasPainScore ? VAS_LEVELS[profile.vasPainScore] : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 text-right animate-in fade-in duration-200 pb-12">
@@ -136,6 +152,11 @@ export const PatientProfileScreen: React.FC<Props> = ({
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#ecfccb] text-[#365314] border border-[#d9f99d]">
                   {profile.age} ساله
                 </span>
+                {profile.genderFa && (
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    {profile.genderFa}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-[#008ba3] font-bold mt-1 flex items-center gap-1.5">
                 <Stethoscope className="w-3.5 h-3.5 text-[#00ad8c]" />
@@ -144,14 +165,83 @@ export const PatientProfileScreen: React.FC<Props> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-[#ecfccb] hover:border-[#d9f99d] hover:text-[#365314] text-xs font-bold transition-all cursor-pointer shadow-2xs"
-          >
-            <Edit3 className="w-4 h-4 text-[#00ad8c]" />
-            <span>ویرایش مشخصات</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenAccountSwitcher && (
+              <button
+                onClick={onOpenAccountSwitcher}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-sky-50 border border-sky-200 text-[#0284c7] hover:bg-sky-100 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                title="مدیریت و جابجایی بین حساب‌های کاربری"
+              >
+                <Users className="w-3.5 h-3.5 text-[#008ba3]" />
+                <span>جابجایی حساب</span>
+              </button>
+            )}
+            {onOpenAssessment && (
+              <button
+                onClick={onOpenAssessment}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-[#ecfccb] border border-[#d9f99d] text-[#365314] hover:bg-[#d9f99d] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                title="ارزیابی مجدد درد و ناتوانی"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-[#65a30d]" />
+                <span>ارزیابی مجدد Oswestry</span>
+              </button>
+            )}
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-[#00ad8c]" />
+              <span>ویرایش مشخصات</span>
+            </button>
+          </div>
         </div>
+
+        {/* Clinical Scores Summary (VAS & Oswestry) */}
+        {(profile.vasPainScore !== undefined || profile.oswestryScore) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-emerald-50/30 border border-slate-200">
+            {/* VAS Pain Score */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-xl shrink-0">
+                {vasInfo ? vasInfo.expression : '😐'}
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-slate-500 block">
+                  نمره مقیاس دیداری درد (VAS)
+                </span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-base font-black text-slate-900 font-sans">
+                    {profile.vasPainScore || 4} از ۱۰
+                  </span>
+                  <span className={`text-[11px] font-bold ${vasInfo ? vasInfo.colorClass : 'text-amber-600'}`}>
+                    {vasInfo ? vasInfo.labelFa : 'درد متوسط'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Oswestry Score */}
+            {profile.oswestryScore && (
+              <div className="flex items-center gap-3 sm:border-r sm:border-slate-200 sm:pr-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#00ad8c] shrink-0">
+                  <FileSpreadsheet className="w-5 h-5 text-[#00ad8c]" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-slate-500 block">
+                    شاخص ناتوانی کمر (Modified Oswestry)
+                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-base font-black text-[#008ba3] font-sans">
+                      {profile.oswestryScore.percentage}٪
+                    </span>
+                    <span className="text-[11px] font-bold text-[#0f766e]">
+                      {profile.oswestryScore.disabilityLevelFa}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Medical History Section */}
         <div className="space-y-3">
@@ -219,7 +309,7 @@ export const PatientProfileScreen: React.FC<Props> = ({
               </div>
               <button
                 onClick={() => setIsEditing(false)}
-                className="text-white/80 hover:text-white p-1 rounded-lg"
+                className="text-white/80 hover:text-white p-1 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -240,20 +330,37 @@ export const PatientProfileScreen: React.FC<Props> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  سن بیمار:
-                </label>
-                <input
-                  type="number"
-                  value={editAge}
-                  onChange={(e) => setEditAge(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#00ad8c] font-bold"
-                  placeholder="مثال: ۳۸"
-                  min="10"
-                  max="120"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    سن بیمار:
+                  </label>
+                  <input
+                    type="number"
+                    value={editAge}
+                    onChange={(e) => setEditAge(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#00ad8c] font-bold"
+                    placeholder="مثال: ۳۸"
+                    min="10"
+                    max="120"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    جنسیت:
+                  </label>
+                  <select
+                    value={editGender}
+                    onChange={(e) => setEditGender(e.target.value as GenderType)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#00ad8c] font-bold bg-white"
+                  >
+                    <option value="male">مرد</option>
+                    <option value="female">زن</option>
+                    <option value="other">سایر</option>
+                  </select>
+                </div>
               </div>
 
               <div>

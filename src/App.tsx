@@ -7,7 +7,8 @@ import {
   DailyWorkoutLog,
   ThemePaletteId,
   PatientProfile,
-  ExerciseHistoryRecord
+  ExerciseHistoryRecord,
+  UserAccount
 } from './types';
 import { PROTOCOL_EXERCISES } from './data/exercises';
 import {
@@ -33,6 +34,14 @@ import { SessionFinishedScreen } from './components/SessionFinishedScreen';
 import { PatientProfileScreen } from './components/PatientProfileScreen';
 import { RecoveryAnalytics } from './components/RecoveryAnalytics';
 import { SafetyHub } from './components/SafetyHub';
+import { AuthScreen } from './components/AuthScreen';
+import { ClinicalOnboardingScreen } from './components/ClinicalOnboardingScreen';
+import {
+  getCurrentUser,
+  setCurrentUser as persistCurrentUser,
+  logoutActiveUser,
+  DEMO_USER
+} from './utils/authStorage';
 import { Sparkles, X, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -51,6 +60,20 @@ type ScreenType =
 export default function App() {
   const [protocolState, setProtocolState] = useState<AppProtocolState>(INITIAL_PROTOCOL_STATE);
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Authentication State
+  const [currentUser, setCurUser] = useState<UserAccount | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedUser = getCurrentUser();
+      if (savedUser) return savedUser;
+      // Default to demo user so evaluation is seamless if already loaded
+      return DEMO_USER;
+    }
+    return DEMO_USER;
+  });
+
+  // Re-assessment modal trigger
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
 
   // Active Screen
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('home');
@@ -303,10 +326,101 @@ export default function App() {
     });
   };
 
+  // User Authentication & Logout handlers
+  const handleLogout = () => {
+    logoutActiveUser();
+    setCurUser(null);
+    setCurrentScreen('home');
+    setToast({
+      title: 'خروج از حساب کاربری',
+      message: 'با موفقیت از سامانه خارج شدید.',
+      type: 'info'
+    });
+  };
+
+  const handleAuthSuccess = (user: UserAccount) => {
+    setCurUser(user);
+    persistCurrentUser(user);
+
+    if (user.isOnboarded) {
+      setProtocolState((prev) => ({
+        ...prev,
+        patientProfile: {
+          name: user.fullName || prev.patientProfile?.name || 'بیمار',
+          age: user.age || prev.patientProfile?.age || 38,
+          gender: user.gender || prev.patientProfile?.gender,
+          genderFa: user.genderFa || prev.patientProfile?.genderFa,
+          vasPainScore: user.vasPainScore ?? prev.patientProfile?.vasPainScore,
+          oswestryScore: user.oswestryScore || prev.patientProfile?.oswestryScore,
+          medicalHistory: user.medicalHistory || prev.patientProfile?.medicalHistory || '',
+          painLocation: user.painLocation || prev.patientProfile?.painLocation || 'پایین کمر',
+          notes: prev.patientProfile?.notes || '',
+          startDate: prev.patientProfile?.startDate || new Date().toLocaleDateString('fa-IR')
+        }
+      }));
+      setToast({
+        title: 'ورود موفقیت‌آمیز',
+        message: `خوش آمدید، ${user.fullName || 'کاربر گرامی'}`,
+        type: 'info'
+      });
+    }
+  };
+
+  const handleOnboardingComplete = (updatedUser: UserAccount) => {
+    setCurUser(updatedUser);
+    persistCurrentUser(updatedUser);
+    setShowAssessmentModal(false);
+
+    setProtocolState((prev) => ({
+      ...prev,
+      patientProfile: {
+        name: updatedUser.fullName,
+        age: updatedUser.age || 38,
+        gender: updatedUser.gender,
+        genderFa: updatedUser.genderFa,
+        vasPainScore: updatedUser.vasPainScore,
+        oswestryScore: updatedUser.oswestryScore,
+        medicalHistory: updatedUser.medicalHistory || prev.patientProfile?.medicalHistory || '',
+        painLocation: updatedUser.painLocation || prev.patientProfile?.painLocation || 'پایین کمر',
+        notes: prev.patientProfile?.notes || '',
+        startDate: prev.patientProfile?.startDate || new Date().toLocaleDateString('fa-IR')
+      }
+    }));
+
+    setCurrentScreen('home');
+    setToast({
+      title: 'ارزیابی بالینی با موفقیت ثبت شد',
+      message: `نمره درد: ${updatedUser.vasPainScore || 4} از ۱۰ | ناتوانی Modified Oswestry: ${updatedUser.oswestryScore?.percentage || 0}٪ (${updatedUser.oswestryScore?.disabilityLevelFa || ''})`,
+      type: 'upgrade'
+    });
+  };
+
   const currentExerciseDef = activeExerciseDefs[activeWorkoutIndex] || PROTOCOL_EXERCISES[0];
   const nextExerciseDef = activeWorkoutIndex < activeExerciseDefs.length - 1
     ? activeExerciseDefs[activeWorkoutIndex + 1]
     : null;
+
+  // 1. If not logged in: Show AuthScreen
+  if (!currentUser) {
+    return (
+      <div className={`min-h-screen ${activeTheme.bgPage} ${activeTheme.textMain} flex flex-col font-sans transition-colors duration-200 selection:bg-[#ecfccb] selection:text-[#365314]`}>
+        <AuthScreen onAuthSuccess={handleAuthSuccess} />
+      </div>
+    );
+  }
+
+  // 2. If logged in but not onboarded or user clicked Re-Assessment: Show ClinicalOnboardingScreen
+  if (!currentUser.isOnboarded || showAssessmentModal) {
+    return (
+      <div className={`min-h-screen ${activeTheme.bgPage} ${activeTheme.textMain} flex flex-col font-sans transition-colors duration-200 selection:bg-[#ecfccb] selection:text-[#365314]`}>
+        <ClinicalOnboardingScreen
+          user={currentUser}
+          onCancel={showAssessmentModal ? () => setShowAssessmentModal(false) : undefined}
+          onComplete={handleOnboardingComplete}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${activeTheme.bgPage} ${activeTheme.textMain} flex flex-col font-sans transition-colors duration-200 selection:bg-[#ecfccb] selection:text-[#365314]`}>
@@ -335,6 +449,8 @@ export default function App() {
           currentDay={protocolState.currentDayInWeek}
           currentTheme={currentTheme}
           onSelectTheme={setCurrentTheme}
+          userName={currentUser?.fullName || protocolState.patientProfile?.name}
+          onLogout={handleLogout}
         />
       )}
 
@@ -367,15 +483,20 @@ export default function App() {
           <PatientProfileScreen
             profile={
               protocolState.patientProfile || {
-                name: 'آنا کلر',
-                age: 38,
-                medicalHistory: 'سابقه بیرون‌زدگی خفیف دیسک مهره‌های L4-L5',
-                painLocation: 'پایین کمر'
+                name: currentUser?.fullName || 'بیمار',
+                age: currentUser?.age || 38,
+                gender: currentUser?.gender,
+                genderFa: currentUser?.genderFa,
+                medicalHistory: currentUser?.medicalHistory || 'سابقه بیرون‌زدگی خفیف دیسک مهره‌های L4-L5',
+                painLocation: currentUser?.painLocation || 'پایین کمر',
+                vasPainScore: currentUser?.vasPainScore,
+                oswestryScore: currentUser?.oswestryScore
               }
             }
             exerciseHistory={protocolState.exerciseHistory || []}
             onUpdateProfile={handleUpdatePatientProfile}
             onBackToHome={() => setCurrentScreen('home')}
+            onOpenAssessment={() => setShowAssessmentModal(true)}
           />
         )}
 

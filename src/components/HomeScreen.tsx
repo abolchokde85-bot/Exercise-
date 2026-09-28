@@ -99,9 +99,16 @@ export const HomeScreen: React.FC<Props> = ({
             <span className="text-[11px] font-black text-[#008ba3] tracking-wider block">
               صبح بخیر
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#0f2824]">
-              {patientName}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl sm:text-3xl font-black text-[#0f2824]">
+                {patientName}
+              </h2>
+              {patientProfile?.genderFa && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
+                  {patientProfile.genderFa}
+                </span>
+              )}
+            </div>
           </div>
 
           {onOpenProfile && (
@@ -110,19 +117,29 @@ export const HomeScreen: React.FC<Props> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-[#ecfccb] hover:text-[#365314] transition-all shadow-2xs cursor-pointer"
             >
               <User className="w-3.5 h-3.5 text-[#00ad8c]" />
-              <span>پروفایل بیمار</span>
+              <span>پروفایل و ارزیابی</span>
             </button>
           )}
         </div>
 
-        {/* Low back pain programme Launcher */}
-        <button
-          onClick={onStartTodaySession}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#ecfccb] hover:bg-[#e4f8b9] text-[#365314] border border-[#d9f99d] text-xs font-black shadow-2xs transition-all cursor-pointer hover:scale-102"
-        >
-          <span className="w-2 h-2 rounded-full bg-[#65a30d] animate-pulse" />
-          <span>برنامه تخصصی توانبخشی ستون فقرات و کمردرد</span>
-        </button>
+        {/* Clinical Summary Chip & Programme Launcher */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={onStartTodaySession}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#ecfccb] hover:bg-[#e4f8b9] text-[#365314] border border-[#d9f99d] text-xs font-black shadow-2xs transition-all cursor-pointer hover:scale-102"
+          >
+            <span className="w-2 h-2 rounded-full bg-[#65a30d] animate-pulse" />
+            <span>برنامه تخصصی توانبخشی ستون فقرات و کمردرد</span>
+          </button>
+
+          {(patientProfile?.vasPainScore || patientProfile?.oswestryScore) && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f0f9ff] text-[#0369a1] border border-sky-100 text-xs font-bold">
+              <span>درد VAS: {patientProfile.vasPainScore || 4}/۱۰</span>
+              <span>•</span>
+              <span>ناتوانی Oswestry: {patientProfile.oswestryScore?.percentage || 28}٪</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 3. Card 1: TODAY'S SCHEDULE (برنامه تمرین امروز) */}
